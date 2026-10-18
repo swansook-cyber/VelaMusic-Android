@@ -19,6 +19,10 @@ import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 import android.net.Uri;
+import android.util.Log;
+import android.webkit.ConsoleMessage;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceResponse;
 
 public final class MainActivity extends Activity {
     private static final String HOME = "https://music.velalab.net/";
@@ -66,6 +70,16 @@ public final class MainActivity extends Activity {
                 catch (Exception e) { Toast.makeText(MainActivity.this, "Cannot open link", Toast.LENGTH_SHORT).show(); }
                 return true;
             }
+            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (request != null && request.getUrl() != null && request.getUrl().getPath() != null && request.getUrl().getPath().matches("(?i).*(\\.mp3|\\.m4a|\\.aac|\\.ogg|\\.wav|/stream/|/audio/).*")) {
+                    Log.w("VelaMusicMedia", "Audio request failed: " + error.getErrorCode() + " " + error.getDescription());
+                }
+            }
+            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+                if (request != null && request.getUrl() != null && request.getUrl().getPath() != null && request.getUrl().getPath().matches("(?i).*(\\.mp3|\\.m4a|\\.aac|\\.ogg|\\.wav|/stream/|/audio/).*")) {
+                    Log.w("VelaMusicMedia", "Audio HTTP error: " + response.getStatusCode());
+                }
+            }
             @Override public void onPageFinished(WebView view, String url) {
                 CookieManager.getInstance().flush();
                 if (isTelevision && url != null && url.startsWith(HOME)) {
@@ -74,6 +88,12 @@ public final class MainActivity extends Activity {
             }
         });
         web.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onConsoleMessage(ConsoleMessage message) {
+                if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                    Log.w("VelaMusicMedia", "Web console error: " + message.message());
+                }
+                return false;
+            }
             @Override public void onProgressChanged(WebView view, int value) {
                 progress.setProgress(value);
                 progress.setVisibility(value >= 100 ? View.GONE : View.VISIBLE);
