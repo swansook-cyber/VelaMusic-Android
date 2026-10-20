@@ -16,6 +16,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Test WebView remote controls
+        run: npm ci && npm test
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools

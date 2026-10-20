@@ -9,11 +9,23 @@ focus, fullscreen WebView video and Android TV launcher entry. It does not requi
 touchscreen hardware, has no third-party update channel, and does not modify the
 Vela Music Home Hub backend.
 
+On the Vela Music origin, the APK adds a focusable Play/Pause button to each library
+song card. D-pad navigation moves between the card, Play/Pause, Previous, Next,
+Details and Lyrics; OK activates only the focused control. The pink focus outline
+also applies to other web controls. Android Back closes an open web dialog before
+navigating WebView history. This adaptation is packaged in the APK and does not
+change the production website, login endpoints, cookies or playback backend.
+
+Launcher icons are generated from `vela-music/static/assets/branding/vela-music/icon-1024.png`
+at Android's mdpi through xxxhdpi sizes. The adaptive icon and 320×180 TV banner
+use the same repository's `mark-transparent-1024.png` brand mark.
+
 ## Build
 Use GitHub Actions workflow **Vela Music Android Debug** (manual `workflow_dispatch`).
 It builds `app-debug.apk` and lint outputs with Gradle 8.11.1, JDK 17, Android SDK 35.
 Or on a PC with Android SDK and Gradle 8.11.1: `gradle :app:assembleDebug :app:lintDebug`.
 No Gradle wrapper binary is included; the CI installs a pinned Gradle version.
+The workflow first runs `npm ci && npm test` for WebView remote-control and resource checks.
 
 ## Testing gates (not yet completed)
 * Phone: login and reopen app, search, music and YouTube playback, fullscreen, logout
