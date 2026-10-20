@@ -17,6 +17,9 @@ import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 import android.net.Uri;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 
 public final class MainActivity extends Activity {
     private static final String HOME = "https://music.velalab.net/";
@@ -25,6 +28,7 @@ public final class MainActivity extends Activity {
     private FrameLayout root;
     private View fullscreenView;
     private WebChromeClient.CustomViewCallback fullscreenCallback;
+    private String tvControlsScript;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override public void onCreate(Bundle state) {
@@ -60,6 +64,11 @@ public final class MainActivity extends Activity {
             }
             @Override public void onPageFinished(WebView view, String url) {
                 CookieManager.getInstance().flush();
+                Uri uri = Uri.parse(url);
+                if ("https".equals(uri.getScheme()) &&
+                    "music.velalab.net".equalsIgnoreCase(uri.getHost())) {
+                    view.evaluateJavascript(getTvControlsScript(), null);
+                }
             }
         });
         web.setWebChromeClient(new WebChromeClient() {
@@ -79,6 +88,30 @@ public final class MainActivity extends Activity {
         web.loadUrl(HOME);
     }
 
+    private String getTvControlsScript() {
+        if (tvControlsScript != null) return tvControlsScript;
+        try (InputStream input = getAssets().open("tv-controls.js")) {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int count;
+            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+            tvControlsScript = output.toString(StandardCharsets.UTF_8.name());
+        } catch (Exception e) {
+            tvControlsScript = "";
+        }
+        return tvControlsScript;
+    }
+
+    private void handleBack() {
+        if (fullscreenView != null) { closeFullscreen(); return; }
+        web.evaluateJavascript("window.__velaTvBack ? window.__velaTvBack() : false", result -> {
+            if (!"true".equals(result)) {
+                if (web.canGoBack()) web.goBack();
+                else MainActivity.super.onBackPressed();
+            }
+        });
+    }
+
     private void closeFullscreen() {
         if (fullscreenView == null) return;
         root.removeView(fullscreenView);
@@ -87,20 +120,15 @@ public final class MainActivity extends Activity {
         if (fullscreenCallback != null) { fullscreenCallback.onCustomViewHidden(); fullscreenCallback = null; }
     }
 
-    // Android TV D-pad can focus web links and buttons; handling remains WebView's
-    // native key navigation, so no simulated screen taps or forced selection.
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
-            if (fullscreenView != null) { closeFullscreen(); return true; }
-            if (web.canGoBack()) { web.goBack(); return true; }
-            return super.dispatchKeyEvent(event);
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) handleBack();
+            return true;
         }
         return super.dispatchKeyEvent(event);
     }
     @Override public void onBackPressed() {
-        if (fullscreenView != null) { closeFullscreen(); return; }
-        if (web.canGoBack()) { web.goBack(); return; }
-        super.onBackPressed();
+        handleBack();
     }
     @Override protected void onPause() {
         CookieManager.getInstance().flush();
