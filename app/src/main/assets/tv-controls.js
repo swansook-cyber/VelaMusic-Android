@@ -91,6 +91,19 @@
     let next;
     if (event.key === "ArrowLeft") next = row[position - 1];
     if (event.key === "ArrowRight") next = row[position + 1];
+    if (!next && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      const currentRect = card.getBoundingClientRect();
+      const candidates = [...document.querySelectorAll(".grid .card")].filter((other) => {
+        if (other === card || !other.getClientRects().length) return false;
+        const rect = other.getBoundingClientRect();
+        const sameRow = rect.top < currentRect.bottom && rect.bottom > currentRect.top;
+        return sameRow && (event.key === "ArrowLeft"
+          ? rect.right <= currentRect.left + 8 : rect.left >= currentRect.right - 8);
+      });
+      candidates.sort((a, b) => Math.abs(a.getBoundingClientRect().left - currentRect.left)
+        - Math.abs(b.getBoundingClientRect().left - currentRect.left));
+      next = candidates[0];
+    }
     if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       const currentRect = card.getBoundingClientRect();
       const candidates = [...document.querySelectorAll(".grid .card")].filter((other) => {

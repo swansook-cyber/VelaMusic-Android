@@ -10,7 +10,7 @@ const card = (id) => `<article class="card" data-row="${id}"><h2 class="title">S
   <button class="js-previous">Previous</button><button class="js-next">Next</button>
   <button class="js-details">Details</button><button class="js-lyrics">Lyrics</button></article>`;
 
-function fixture() {
+function fixture(horizontal = false) {
   const dom = new JSDOM(`<div class="grid">${card(1)}${card(2)}</div><div class="modal hidden"><button class="close">Close</button></div>`, {
     url: "https://music.velalab.net/", runScripts: "outside-only"
   });
@@ -18,7 +18,9 @@ function fixture() {
   window.HTMLElement.prototype.getClientRects = function () { return [this.getBoundingClientRect()]; };
   window.HTMLElement.prototype.getBoundingClientRect = function () {
     const row = Number(this.closest(".card")?.dataset.row || 1);
-    return { left: 0, right: 300, top: row * 300, bottom: row * 300 + 200 };
+    return horizontal
+      ? { left: (row - 1) * 330, right: (row - 1) * 330 + 300, top: 0, bottom: 200 }
+      : { left: 0, right: 300, top: row * 300, bottom: row * 300 + 200 };
   };
   window.HTMLElement.prototype.scrollIntoView = function () {};
   const calls = [];
@@ -48,12 +50,23 @@ test("card, Play/Pause, and other actions keep separate focus and OK targets", (
   assert.equal(first.ownerDocument.activeElement, second.querySelector(".js-previous"));
   key("ArrowUp");
   assert.equal(first.ownerDocument.activeElement, first.querySelector(".js-previous"));
+  key("ArrowLeft");
+  assert.equal(first.ownerDocument.activeElement, play);
   first.focus();
   key("Enter");
   assert.deepEqual(calls, ["play:1"]);
   assert.equal(play.getAttribute("aria-pressed"), "true");
   play.click();
   assert.deepEqual(calls, ["play:1", "pause:1"]);
+});
+
+test("D-pad crosses between adjacent cards in a tablet or TV grid", () => {
+  const { cards, key } = fixture(true);
+  cards[0].querySelector(".js-lyrics").focus();
+  key("ArrowRight");
+  assert.equal(cards[0].ownerDocument.activeElement, cards[1]);
+  key("ArrowLeft");
+  assert.equal(cards[0].ownerDocument.activeElement, cards[0]);
 });
 
 test("child click stays on the selected button and touch click still works", () => {
